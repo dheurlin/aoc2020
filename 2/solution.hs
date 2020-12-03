@@ -41,8 +41,8 @@ checkNewPolicy (Policy pos1 pos2 l) pass = fstCorrect `xor` sndCorrect
 
 
 main :: IO ()
-main = do putStrLn . ("Silver: "<>) . show =<< numCorrect checkOldPolicy
-          putStrLn . ("Gold  : "<>) . show =<< numCorrect checkNewPolicy
+main = do putStrLn . ("Star 1: "<>) . show =<< numCorrect checkOldPolicy
+          putStrLn . ("Star 2: "<>) . show =<< numCorrect checkNewPolicy
   where numCorrect checkPolicy = length
                                  . filter id
                                  . map (uncurry checkPolicy . parsePolicy)
