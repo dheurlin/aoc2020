@@ -37,7 +37,7 @@ runInstr acc  Nop     = (acc    , 1)
 runInstr acc  (Acc i) = (acc + i, 1)
 runInstr acc  (Jmp i) = (acc    , i)
 
-run' ::State -> PC -> [Addr] -> Program -> ExitStatus
+run' :: State -> PC -> [Addr] -> Program -> ExitStatus
 run' s pc visited prog
   | endOfProg   = Terminated newState
   | shouldBreak = Break newState
@@ -54,8 +54,8 @@ run = run' 0 0 []
 
 -- Patching an infinite loop ---------------------------------------------------
 
-transformNth :: Int -> (a -> Bool) -> a -> Array Int a -> Maybe (Array Int a, Int)
-transformNth n pred repl arr =
+replaceNth :: Int -> (a -> Bool) -> a -> Array Int a -> Maybe (Array Int a, Int)
+replaceNth n pred repl arr =
   let xs          = elems arr
       ixs         = findIndices pred xs
       ix          = ixs !! (n - 1)
@@ -72,7 +72,7 @@ patchAndRun program = patchAndRun' 1 program 0
       | Terminated state <- run p
         = Just ((replaceAddr, program ! replaceAddr), state)
       | otherwise
-        = uncurry (patchAndRun' (n + 1)) =<< transformNth n isJmp Nop program
+        = uncurry (patchAndRun' (n + 1)) =<< replaceNth n isJmp Nop program
 
     isJmp (Jmp _) = True
     isJmp _       = False
