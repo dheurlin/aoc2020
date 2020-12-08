@@ -28,20 +28,20 @@ parseInstr s = case head (words s) of
 
 parseProgram :: String -> Program
 parseProgram s = listArray (0, length instrs - 1) instrs
-  where instrs = [parseInstr l | l <- lines s ]
+  where instrs = [ parseInstr l | l <- lines s ]
 
 -- Running programs ------------------------------------------------------------
 
 runInstr :: State -> Instr -> (State, Int)
-runInstr acc  Nop     = (acc, 1)
+runInstr acc  Nop     = (acc    , 1)
 runInstr acc  (Acc i) = (acc + i, 1)
-runInstr acc  (Jmp i) = (acc, i)
+runInstr acc  (Jmp i) = (acc    , i)
 
-run' :: Bool -> State -> PC -> [Addr] -> Program -> ExitStatus
-run' breakOnVisited s pc visited prog
+run' ::State -> PC -> [Addr] -> Program -> ExitStatus
+run' s pc visited prog
   | endOfProg   = Terminated newState
   | shouldBreak = Break newState
-  | otherwise   = run' breakOnVisited newState newPc (pc : visited) prog
+  | otherwise   = run' newState newPc (pc : visited) prog
 
     where
       (newState, offs) = runInstr s (prog ! pc)
@@ -49,8 +49,8 @@ run' breakOnVisited s pc visited prog
       shouldBreak = newPc `elem` visited
       endOfProg = pc + offs > length prog - 1
 
-run :: Bool -> Program -> ExitStatus
-run breakOnVisited = run' breakOnVisited 0 0 []
+run :: Program -> ExitStatus
+run = run' 0 0 []
 
 -- Patching an infinite loop ---------------------------------------------------
 
@@ -69,7 +69,7 @@ patchAndRun :: Program -> Maybe ((Addr, Instr), Int)
 patchAndRun program = patchAndRun' 1 program 0
   where
     patchAndRun' n p replaceAddr
-      | Terminated state <- run True p
+      | Terminated state <- run p
         = Just ((replaceAddr, program ! replaceAddr), state)
       | otherwise
         = uncurry (patchAndRun' (n + 1)) =<< transformNth n isJmp Nop program
@@ -80,7 +80,7 @@ patchAndRun program = patchAndRun' 1 program 0
 -- Solution --------------------------------------------------------------------
 
 runStar1 :: IO Program -> IO String
-runStar1 p = (run True <$> p) >>= \case
+runStar1 p = (run <$> p) >>= \case
   Break acc    -> pure $ "Break: acc=" ++ show acc
   Terminated _ -> pure "Didn't break, WTF?"
 
