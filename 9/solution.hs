@@ -1,19 +1,15 @@
 import Data.Foldable
 import Data.Maybe
 import Data.List
+import Control.Monad
 
 -- Checks if a list contains two numbers that add to a given number
 hasSum :: Int -> [Int] -> Bool
-hasSum _ [] = False
-hasSum s (x:xs)
-  | s - x `elem` xs = True
-  | otherwise       = hasSum s xs
+hasSum s xs = any (\x -> s - x `elem` xs) (tail xs)
 
 -- Returns (head xs) if (tail xs) does *not* contain numbers that sum to (head xs)
 headNotSum :: [Int] -> Maybe Int
-headNotSum (x:xs)
-  | hasSum x xs = Nothing
-  | otherwise   = Just x
+headNotSum (x:xs) = x <$ guard (not $ hasSum x xs)
 
 -- Returns all sublists of size `size` of xs
 windows :: Int -> [Int] -> [[Int]]
