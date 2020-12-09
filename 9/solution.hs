@@ -5,7 +5,7 @@ import Control.Monad
 
 -- Checks if a list contains two numbers that add to a given number
 hasSum :: Int -> [Int] -> Bool
-hasSum s xs = any (\x -> s - x `elem` xs) (tail xs)
+hasSum s xs = any (\x -> s - x `elem` xs) xs
 
 -- Returns (head xs) if (tail xs) does *not* contain numbers that sum to (head xs)
 headNotSum :: [Int] -> Maybe Int
