@@ -13,6 +13,7 @@ readBin = fst . head . readInt 2
                     (\case '1' -> True; '0' -> True; _ -> False)
                     (\case '1' -> 1   ; '0' -> 0)
 
+-- lol
 showBin :: Int -> String
 showBin n = padBin (showBin' n)
   where
@@ -76,7 +77,7 @@ maskAddr msk n = map readBin $ maskAddr' msk (showBin n)
     maskAddr' :: String -> String -> [String]
     maskAddr' [] []         = pure ""
     maskAddr' ('1':m) (_:b) = map ('1' :) $ maskAddr' m b
-    maskAddr' ('0':m) (n:b) = map ( n  :)   $ maskAddr' m b
+    maskAddr' ('0':m) (n:b) = map ( n  :) $ maskAddr' m b
     maskAddr' ('X':m) (_:b) = (\s -> ['0':s, '1':s]) =<< maskAddr' m b
 
 run2 :: [Instr] -> Memory
