@@ -1,23 +1,25 @@
-import qualified Data.Map as M
 import Control.Monad
+import Data.Array.IO
 
-type Numbers = M.Map Int (Maybe Int)
+-- Need to use mutable arrays or part 2 explodes. Is still slow af though
 
-step :: (Int, Numbers) -> Int -> (Int, Numbers)
-step (last, ns) num =
-  let newNum = maybe 0 ((num - 1) - ) (join $ M.lookup last ns)
-  in (newNum, M.insert last (Just (num - 1)) ns)
+type NumbersArr = IOArray Int (Maybe Int)
 
-mkMap :: [Int] -> Numbers
-mkMap xs = M.fromList [ (x, Just n) | (x, n) <- zip xs [1..]]
+step :: (Int, NumbersArr) -> Int -> IO (Int, NumbersArr)
+step (last, ns) num = do
+  newNum <- maybe 0 ((num - 1) - ) <$> readArray ns last
+  writeArray ns last $ Just (num - 1)
+  pure (newNum, ns)
 
-solve :: Int -> [Int] -> Int
-solve to input = fst $ foldl step (last input, map) [length input + 1..to]
-  where map = mkMap input
+solve :: Int -> [Int] -> IO Int
+solve to input = do
+  nums <- newArray (0, to) Nothing
+  forM_ (zip input [1..]) $ \(ix, e) -> writeArray nums ix (Just e)
+  fst <$> foldM step (last input, nums) [length input + 1..to]
 
 main :: IO ()
 main = do
-  putStrLn . ("Star 1: " <>) . show . solve 2020 $ myInput
-  putStrLn . ("Star 2: " <>) . show . solve 30000000 $ myInput
+  putStrLn . ("Star 1: " <>) . show =<< solve 2020 myInput
+  putStrLn . ("Star 2: " <>) . show =<< solve 30000000 myInput
     where
       myInput = [11,18,0,20,1,7,16]
