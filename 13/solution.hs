@@ -21,10 +21,10 @@ star1 :: Int -> [TimeTable] -> Int
 star1 after tables = busId * (time - after)
   where (busId, time) = earliestAll after tables
 
--- Star 2 ----------------------------------------------------------------------
-
 parseTables :: [String] -> [TimeTable]
 parseTables = map (mkTable . read) . filter (/= "x") . splitOn "," . last
+
+-- Star 2 ----------------------------------------------------------------------
 
 parseIds :: String -> [(Integer, Integer)]
 parseIds s = [ (n, fromJust t) | (n, t) <- zip [l,l-1..0] mbyIds, isJust t ]
