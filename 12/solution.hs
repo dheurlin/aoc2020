@@ -1,4 +1,5 @@
 import Control.Monad.Trans.State.Lazy
+import Debug.Trace
 
 data Instr = N Double
            | S Double
@@ -31,8 +32,8 @@ data St = St
 fromDegrees :: Floating a => a -> a
 fromDegrees deg = deg * pi / 180
 
--- toDegrees :: Floating a => a -> a
--- toDegrees grad = grad * 180 / pi
+toDegrees :: Floating a => a -> a
+toDegrees grad = grad * 180 / pi
 
 -- North is positive, East is positive
 
@@ -79,15 +80,15 @@ step2 (N dist) = modify (\s -> s {wpY = wpY s + dist})
 step2 (S dist) = modify (\s -> s {wpY = wpY s - dist})
 step2 (E dist) = modify (\s -> s {wpX = wpX s + dist})
 step2 (W dist) = modify (\s -> s {wpX = wpX s - dist})
-step2 (L dist) = modify $ rotateAround dist
-step2 (R dist) = modify $ rotateAround (-dist)
+step2 (L ang)  = modify $ rotateAround ang
+step2 (R ang)  = modify $ rotateAround (-ang)
 step2 (F dist) = modify (\s -> s { shipX = shipX s + dist * wpX s
-                                 , shipY = shipY s + dist * wpY s })
+                                   , shipY = shipY s + dist * wpY s })
 
 rotateAround :: Double -> St2 -> St2
 rotateAround ang (St2 wpX wpY shipX shipY) =
   let dist    = sqrt $ wpX^2 + wpY^2
-      currAng = acos (wpX / dist)
+      currAng = acos (wpX / dist) * signum wpY
       newAng  = currAng + fromDegrees ang
       newWpX  = dist * cos newAng
       newWpY  = dist * sin newAng
@@ -109,6 +110,16 @@ test =
   , R 90
   , F 11
   ]
+
+test1 :: [Instr]
+test1 = -- Start: 1 1 0 0
+  [ F 1 -- 1 1 1 1
+  , F 1 -- 1 1 2 2
+  , S 1 -- 1 0 2 2
+  , F 5 -- 1 0 7 2
+  ]
+
+runTest = execState (mapM step2 test1) $ St2 1 1 0 0
 
 -- 20158 too low
 main :: IO ()
