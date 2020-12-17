@@ -42,9 +42,6 @@ parseNearby = map parseTicket . tail . dropWhile (/= "nearby tickets:")
 
 -- Lib -------------------------------------------------------------------------
 
-iterateTill :: (a -> Bool) -> (a -> a) -> a -> a
-iterateTill pred f a = head . dropWhile (not . pred) $ iterate f a
-
 checkRanges :: Class -> Int -> Bool
 checkRanges c i = checkRange (r1 c) i || checkRange (r2 c) i
   where
@@ -81,17 +78,17 @@ getCands cls tickets = M.singleton (cName cls) candidates
 
 -- Uniquely maps each class name to its correct column in a ticket
 solveFields :: [Class] -> [Ticket] -> M.Map String Int
-solveFields clss tickets
-  = fst $ iterateTill ((== 0) . M.size . snd) step (M.empty, candsAll)
+solveFields clss tickets = fst $ go (M.empty, candsAll)
   where
     candsAll = M.unions $ map (`getCands` tickets) clss
-    -- Ideitifes the mapping for one candidate
-    step :: (M.Map String Int, Candidates) -> (M.Map String Int, Candidates)
-    step (soFar,rest) =
+    -- Ideitifes the mapping for one candidate at a time
+    go :: (M.Map String Int, Candidates) -> (M.Map String Int, Candidates)
+    go (soFar,rest) | M.size rest == 0 = (soFar, rest)
+    go (soFar,rest) =
       let (name, fewest) = head . sortOn (length . snd) $ M.toList rest
           chosen         = head $ S.elems fewest
           newRest        = M.map (S.delete chosen) $ M.delete name rest
-      in (M.insert name chosen soFar, newRest)
+      in go (M.insert name chosen soFar, newRest)
 
 star2 :: [Class] -> [Ticket] -> Ticket -> Int
 star2 clss others mine
