@@ -1,4 +1,5 @@
 {-# LANGUAGE TupleSections #-}
+{-# LANGUAGE LambdaCase #-}
 
 import Data.Char
 import Data.List.Split
@@ -17,9 +18,6 @@ import Matrix
 data Tile = T { tNum :: Int, tMat :: Matrix Char }
 instance Eq Tile where (T n _) == (T m _) = n == m
 
--- instance Show Tile where
---   show (T num t) = unlines [printf "Tile %d:" num, filter (/= '"') $ show t]
-
 parseTiles :: [String] -> [Tile]
 parseTiles = map parseTile . splitOn [""]
   where
@@ -34,15 +32,6 @@ imgBounds img = ((minX, maxX), (minY, maxY))
   where
     (minX, maxX, minY, maxY) = (minimum xs, maximum xs, minimum ys, maximum ys)
     (xs, ys) = unzip $ M.keys img
-
-showImage :: Image -> String
-showImage img = printf "x ∈ [%d, %d], y ∈ [%d, %d]\n" minX maxX minY maxY <>
-  unlines [ unwords [ showTile x y | x <- [minX..maxX] ] | y <- [minY..maxY] ]
-  where
-    ((minX, maxX), (minY, maxY)) = imgBounds img
-    showTile x y
-      | Just (T num _) <- M.lookup (x,y) img = show num
-      | otherwise                            = "[  ]"
 
 data Dir = North | South | East | West
   deriving (Eq, Show)
@@ -80,14 +69,18 @@ fits t i coord = all isOk (neighbors i coord)
   where
     isOk (d, n) = side n (opposite d) == side t d
 
--- All transformed versions of a tile
-transformations :: Tile -> [Tile]
-transformations (T num m) = [ T num (apAll fs m) | fs <- allTransfs ]
+-- All transformations of a matrix
+allTrans :: Matrix a -> [Matrix a]
+allTrans m = [ apAll fs m | fs <- allTransfs ]
     where
       apAll      = foldr (.) id
       allTransfs = concat $ [ map (rot <>) flips | rot <- rots ]
       rots       = [replicate n rot1 | n <- [0..3] ]
       flips      = subsequences [flipX, flipY]
+
+-- All transformed versions of a tile
+transformations :: Tile -> [Tile]
+transformations (T num m) = map (T num) $ allTrans m
 
 insertTiles :: Image -> [Tile] -> [Image]
 insertTiles img [] = [img]
@@ -100,16 +93,57 @@ insertTiles img ts = concat
 solve :: [Tile] -> Image
 solve tiles = head $ insertTiles (M.singleton (0,0) $ head tiles) (tail tiles)
 
-star1 :: [Tile] -> Int
-star1 ts =
+star1 :: Image -> Int
+star1 image =
   product [ tNum $ image M.! (x,y) | x <- [minX, maxX], y <- [minY, maxY] ]
   where
-    image = solve ts
     ((minX, maxX), (minY, maxY)) = imgBounds image
+
+-- Star 2 ----------------------------------------------------------------------
+
+rmBorders :: Matrix a -> Matrix a
+rmBorders m = subMatrix (1,1) (mx-1,my-1) m
+  where (mx,my) = dims m
+
+mkImage :: Image -> Matrix Char
+mkImage i =
+  grid [[ rmBorders . tMat $ i M.! (x,y) | x <- [minX..maxX]] | y <- [minY..maxY]]
+    where ((minX, maxX), (minY, maxY)) = imgBounds i
+
+monster :: Matrix Char
+monster = fromList
+  [ "                  # "
+  , "#    ##    ##    ###"
+  , " #  #  #  #  #  #   "
+  ]
+
+-- Is this region a monster?
+isMatch :: Matrix (Char, Char) -> Bool
+isMatch m = foldMat (&&) True $ fmap (\case ('#', '.') -> False; _ -> True) m
+
+regions :: Int -> Int -> Matrix Char -> [Matrix Char]
+regions w h m =
+  [ subMatrix (x,y) (x+w,y+h) m | x <- [0..mx-1-w], y <- [0..my-1-h] ]
+    where (mx,my) = dims m
+
+-- Number of monsters for a certain transormation of the monster
+matches :: Matrix Char -> Matrix Char -> Int
+matches m monster = length (filter id $ map isMatch regs)
+  where
+    regs = map (matZip monster) $ uncurry regions (dims monster) m
+
+-- Total number of monsters
+totalMatches :: Matrix Char -> Int
+totalMatches m = maximum . map (matches m) $ allTrans monster
+
+star2 :: Image -> Int
+star2 i = matCount (== '#') m - 15 * totalMatches m
+  where m = mkImage i
 
 main :: IO ()
 main = do
-  putStrLn . ("Star 1: " <>) . show . star1 =<< input
-  -- putStrLn . star1 =<< input
+  img <- solve <$> input
+  putStrLn . ("Star 1: " <>) . show $ star1 img
+  putStrLn . ("Star 2: " <>) . show $ star2 img
   where
     input = parseTiles . lines <$> readFile "input"

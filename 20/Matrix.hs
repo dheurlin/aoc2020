@@ -1,3 +1,5 @@
+-- {-# LANGUAGE ScopedTypeVariables #-}
+
 module Matrix
   ( Matrix
   , dims
@@ -16,6 +18,11 @@ module Matrix
   , tall
   , grid
   , matrix
+  , foldMat
+  , matSum
+  , matCount
+  , matZip
+  , subMatrix
   ) where
 
 import qualified Data.Array as A
@@ -27,6 +34,10 @@ data Matrix a = M { dims :: (Int, Int), mf :: (Int, Int) -> a }
 instance Functor Matrix where
   fmap f m@(M (mx,my) _) = M (mx,my) $ \(x,y) -> f (m ! (x,y))
 
+instance Show a => Show (Matrix a) where
+  show m@(M (mx,my) _) =
+    unlines [show [ m ! (x, y) | x <- [0..mx-1] ] | y <- [0..my-1]]
+
 matrix :: (Int, Int) -> ((Int, Int) -> a) -> Matrix a
 matrix = M
 
@@ -36,9 +47,30 @@ infixl 7 !
   = error $ "Matrix: index " <> show (x,y) <> " out of bounds " <> show (mx,my)
 (!) (M _ m) i = m i
 
-instance Show a => Show (Matrix a) where
-  show m@(M (mx,my) _) =
-    unlines [show [ m ! (x, y) | x <- [0..mx-1] ] | y <- [0..my-1]]
+foldMat :: (b -> a -> b) -> b -> Matrix a -> b
+foldMat f zero m@(M (mx,my) _) =
+  foldl accum zero [ (x, y) | x <- [0..mx-1], y <- [0..my-1] ]
+    where
+      accum b (x, y) = f b (m ! (x, y))
+
+matSum :: Num a => Matrix a -> a
+matSum = foldMat (+) 0
+
+matCount :: Num b => (a -> Bool) -> Matrix a -> b
+matCount f = matSum . fmap (toNum . f)
+  where toNum True = 1
+        toNum False = 0
+
+matZip :: Matrix a -> Matrix b -> Matrix (a, b)
+matZip ma mb | dims ma /= dims mb = error "matZip: dimension mismatch"
+matZip ma mb = M (dims ma) $ \ix -> (ma ! ix, mb ! ix)
+
+subMatrix :: (Int, Int) -> (Int, Int) -> Matrix a -> Matrix a
+subMatrix (nminx, nminy) (nmaxx, nmaxy) m@(M (mx,my) _)
+  | nminx < 0 || nminy < 0 || nmaxx > mx || nmaxy > my
+    = error "New region is outside matrix dimensions"
+  | otherwise
+    = M (nmaxx-nminx, nmaxy-nminy) $ \(x, y) -> m ! (x+nminx,y+nminy)
 
 transpose :: Matrix a -> Matrix a
 transpose (M (mx,my) m) = M (my, mx) $ \(x,y) -> m (y,x)
