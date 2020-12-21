@@ -5,50 +5,12 @@ import Data.List.Split
 import Data.Maybe
 import Control.Monad
 import Data.List (subsequences, nub, delete)
+import qualified Data.Map as M
 
 -- import Debug.Trace
 import Text.Printf
 
-import qualified Data.Map as M
-
--- Small matrix library specialized for this task ------------------------------
-
-newtype Matrix a = M ((Int, Int) -> a)
-
-sideLen = 10
-sideMax = sideLen - 1
-
-infixl 9 !
-(!) :: Matrix a -> (Int, Int) -> a
-(!) _ (x,y) | x < 0 || y < 0 || x > sideMax || y > sideMax
-  = error "Matrix: index out of bounds"
-(!) (M m) c = m c
-
-instance Show a => Show (Matrix a) where
-  show m = unlines [show [ m ! (x, y) | x <- [0..9] ] | y <- [0..9]]
-
-transpose :: Matrix a -> Matrix a
-transpose (M m) = M $ \(x,y) -> m (y,x)
-
-flipX :: Matrix a -> Matrix a
-flipX (M m) = M $ \(x,y) -> m (sideMax - x, y)
-
-flipY :: Matrix a -> Matrix a
-flipY (M m) = M $ \(x,y) -> m (x, sideMax - y)
-
-rot1 :: Matrix a -> Matrix a
-rot1 = flipX . transpose
-
-fromList :: [[a]] -> Matrix a
-fromList as
-  | length as /= 10 || length (head as) /= 10 = error "Invalid matrix dimensions"
-  | otherwise = M $ \(x, y) -> as !! y !! x
-
-getCol :: Int -> Matrix a -> [a]
-getCol i m = [ m ! (i, y) | y <- [0..9]]
-
-getRow :: Int -> Matrix a -> [a]
-getRow i m = [ m ! (x, i) | x <- [0..9]]
+import Matrix
 
 -- Star 1 ----------------------------------------------------------------------
 
@@ -58,13 +20,12 @@ instance Eq Tile where (T n _) == (T m _) = n == m
 -- instance Show Tile where
 --   show (T num t) = unlines [printf "Tile %d:" num, filter (/= '"') $ show t]
 
-parseTile :: [String] -> Tile
-parseTile ss = T tileNo $ fromList tile
-  where tileNo = read . filter isDigit $ head ss
-        tile   = tail ss
-
 parseTiles :: [String] -> [Tile]
 parseTiles = map parseTile . splitOn [""]
+  where
+    parseTile ss = T tileNo $ fromList tile
+      where tileNo = read . filter isDigit $ head ss
+            tile   = tail ss
 
 type Image = M.Map (Int, Int) Tile
 
@@ -86,12 +47,6 @@ showImage img = printf "x ∈ [%d, %d], y ∈ [%d, %d]\n" minX maxX minY maxY <>
 data Dir = North | South | East | West
   deriving (Eq, Show)
 
-slOffset :: (Int, Int) -> Dir -> (Int, Int)
-slOffset (x, y) North = (x  , y-1)
-slOffset (x, y) South = (x  , y+1)
-slOffset (x, y) East  = (x+1, y  )
-slOffset (x, y) West  = (x-1, y  )
-
 opposite :: Dir -> Dir
 opposite North = South
 opposite South = North
@@ -99,10 +54,10 @@ opposite East = West
 opposite West = East
 
 side :: Tile -> Dir -> [Char]
-side t South = getRow sideMax $ tMat t
-side t North = getRow 0       $ tMat t
-side t West  = getCol 0       $ tMat t
-side t East  = getCol sideMax $ tMat t
+side t South = getRow 9 $ tMat t
+side t North = getRow 0 $ tMat t
+side t West  = getCol 0 $ tMat t
+side t East  = getCol 9 $ tMat t
 
 neighbors :: Image -> (Int, Int) -> [(Dir, Tile)]
 neighbors i (x,y) = catMaybes [n, s, e, w]
