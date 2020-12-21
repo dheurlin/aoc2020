@@ -8,9 +8,6 @@ import Control.Monad
 import Data.List (subsequences, nub, delete)
 import qualified Data.Map as M
 
--- import Debug.Trace
-import Text.Printf
-
 import Matrix
 
 -- Star 1 ----------------------------------------------------------------------
