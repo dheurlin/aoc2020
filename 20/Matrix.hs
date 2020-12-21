@@ -27,7 +27,7 @@ module Matrix
 
 import qualified Data.Array as A
 
--- Small matrix library since the standard one didn't work ---------------------
+-- I accidentally wrote a matrix library ---------------------------------------
 
 data Matrix a = M { dims :: (Int, Int), mf :: (Int, Int) -> a }
 
