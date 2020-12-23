@@ -28,7 +28,9 @@ star1 d1 d2 = score $ play d1 d2
 
 type GameState = S.Set (Deck, Deck)
 
-playRec :: GameState -> Deck -> Deck -> (Int, Deck)
+type Player = Int
+
+playRec :: GameState -> Deck -> Deck -> (Player, Deck)
 playRec _ d [] = (1,d)
 playRec _ [] d = (2,d)
 playRec s cs ds | (cs,ds) `S.member` s = (1,cs)
