@@ -1,25 +1,32 @@
 import Debug.Trace
 
-parseInput :: String -> ((Int, Int), [Int])
-parseInput s = ((minimum ns, maximum ns), ns)
-  where ns = map (read . (: [])) s
+-- (Before, Current, After)
+type GameState = ([Int], Int, [Int])
 
--- Keep invariant: current cup always head!
+parseInput':: String -> ((Int, Int), GameState)
+parseInput' s = ((minimum ns, maximum ns), ([], n, ns))
+  where (n:ns) = map (read . (: [])) s
 
-pickUp :: [Int] -> ([Int], [Int])
-pickUp (n:ns) = (picked, rest)
+pickUp :: GameState -> ([Int], GameState)
+pickUp (bef, curr, aft) = (p1 <> p2, (r2, curr, r1))
   where
-    picked = take 3 ns
-    rest = n : drop 3 ns
+    (p1, r1) = splitAt 3 aft
+    (p2, r2) = splitAt (3 - length p1) bef
 
-insert :: [Int] -> [Int] -> [Int]
-insert picked (n:ns) = n : picked <> ns
+insert :: [Int] -> GameState -> GameState
+insert picked (bef, curr, aft) = (bef, curr, picked <> aft)
 
-select :: Int -> [Int] -> [Int]
-select i ns = take (length ns) $ dropWhile (/= i) $ cycle ns
+rot1 :: GameState -> GameState
+rot1 (bef, curr, [])  = ([curr], head bef, tail bef)
+rot1 (bef, curr, aft) = (bef <> [curr], head aft, tail aft)
 
-selectAfter :: Int -> [Int] -> [Int]
-selectAfter i ns = take (length ns) $ tail $ dropWhile (/= i) $ cycle ns
+select :: Int -> GameState -> GameState
+select i (bef, curr, aft)
+  | curr == i = (bef, curr, aft)
+  | otherwise = select i $ rot1 (bef, curr, aft)
+
+selectAfter :: Int -> GameState -> GameState
+selectAfter i s = rot1 $ select i s
 
 findNext :: Int -> [Int] -> (Int, Int) -> Int
 findNext curr banned (mn,mx) = go (curr-1)
@@ -29,35 +36,30 @@ findNext curr banned (mn,mx) = go (curr-1)
       | curr `elem` banned = go (curr - 1)
       | otherwise          = curr
 
-
-play :: (Int, Int) -> [Int] -> [Int]
+play :: (Int, Int) -> GameState -> GameState
 play bounds ns =
-  let (picked, rest) = pickUp ns
-      dest           = findNext (head ns) picked bounds
-      newRest        = select dest rest
-      inserted       = insert picked newRest
-  in selectAfter (head ns) inserted
+  let (picked, rest@(_,curr,_)) = pickUp ns
+      dest     = findNext curr picked bounds
+      newRest  = select dest rest
+      inserted = insert picked newRest
+  in selectAfter curr inserted
 
-star1 :: (Int, Int) -> [Int] -> String
-star1 bounds ns = concatMap show . tail . select 1
-                $ iterate (play bounds) ns !! 100
+star1 :: (Int, Int) -> GameState -> String
+star1 bounds s = concatMap show $ aft <> bef
+  where (bef, _, aft) = select 1 $ iterate (play bounds) s !! 100
 
-star2 :: (Int, Int) -> [Int] -> Int
-star2 bounds ns = (res !! 1) * (res !! 2)
+star2 :: (Int, Int) -> GameState -> Int
+star2 bounds s = product $ take 2 aft
   where
-    res = select 1 $ iterate (play bounds) ns !! 10000000
+    (_, _, aft) = select 1 $ iterate (play bounds) s !! 10000000
 
--- TODO it seems the big input is what's making it slow, not (just) the number
--- of iterations. It would be nice to profile to see what's taking time
--- _
--- slow because it's going backward when selecting indices?
+-- Star 1: 29385746
 main :: IO ()
 main = do
-  putStrLn . ("Star 1: " <>) . uncurry star1 =<< input
+  -- putStrLn . ("Star 1: " <>) . uncurry star1 =<< input
   putStrLn . ("Star 2: " <>) . show . uncurry star2 =<< input2
-  -- putStrLn . uncurry star1 =<< input
     where
-      input = parseInput . filter (/= '\n') <$> readFile "testInput"
+      input = parseInput' . filter (/= '\n') <$> readFile "input"
       input2 = do
-        ((mn,mx),ns) <- input
-        pure ((mn,1000000) ,ns <> [mx+1..1000000])
+        ((mn,mx),(bef, curr, aft)) <- input
+        pure ((mn,1000000) ,(bef, curr, aft <> [mx+1..1000000]))
